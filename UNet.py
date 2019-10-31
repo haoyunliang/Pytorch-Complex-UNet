@@ -1,3 +1,50 @@
+class ComplexConv2d(nn.Module):
+    # complex convolution
+    def __init__(self, in_channel, out_channel, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True):
+        super(ComplexConv2d, self).__init__()
+
+        self.conv_real = nn.Conv2d(in_channel, out_channel, kernel_size, stride=stride, padding=padding,
+                                 dilation=dilation, groups=groups, bias=bias)
+        self.conv_imag = nn.Conv2d(in_channel, out_channel, kernel_size, stride=stride, padding=padding,
+                                 dilation=dilation, groups=groups, bias=bias)
+
+    def forward(self, x):  # x.shape = (batch, channel, axis1, axis2, 2)
+        real = self.conv_real(x[..., 0]) - self.conv_imag(x[..., 1])
+        imag = self.conv_imag(x[..., 0]) + self.conv_real(x[..., 1])
+        output = torch.stack((real, imag), dim=4)
+        return output
+    
+
+class ComplexConvTranspose2d(nn.Module):
+    # complex transpose convolution
+    def __init__(self, in_channel, out_channel, kernel_size, stride=1, padding=0, output_padding=0, dilation=1, groups=1, bias=True):
+        super(ComplexConvTranspose2d, self).__init__()
+
+        self.conv_real = nn.ConvTranspose2d(in_channel, out_channel, kernel_size, stride=stride, padding=padding,
+                                 output_padding=output_padding, dilation=dilation, groups=groups, bias=bias)
+        self.conv_imag = nn.ConvTranspose2d(in_channel, out_channel, kernel_size, stride=stride, padding=padding,
+                                 output_padding=output_padding, dilation=dilation, groups=groups, bias=bias)
+
+    def forward(self, x):  # x.shape = (batch, channel, axis1, axis2, 2)
+        real = self.conv_real(x[..., 0]) - self.conv_imag(x[..., 1])
+        imag = self.conv_imag(x[..., 0]) + self.conv_real(x[..., 1])
+        output = torch.stack((real, imag), dim=4)
+        return output
+
+    
+class DataConsistency(nn.Module):
+    # DC layer
+    def __init__(self):
+        super(DataConsistency, self).__init__()
+
+    def forward(self, x, x_k, mask):
+        # output = ifft2(x_k + fft2(x) * (1.0 - mask))
+        output = torch.rand(size=x.size()).cuda()
+        for i in range(len(x)):
+            output[i] = ifft2(x_k[i] + fft2(x[i]) * (1.0 - mask[i]))
+        return output
+
+
 class ComplexUnet(nn.Module):
 
     def __init__(self, in_channels, out_channels):
@@ -31,7 +78,7 @@ class ComplexUnet(nn.Module):
         deconv3 = self.relu(self.deconv3(deconv2)) + conv2
         deconv4 = self.relu(self.deconv4(deconv3)) + conv1
         deconv5 = self.relu(self.deconv5(deconv4))
-        # DC
+        # DC layer
         output = self.dc(deconv5, x_k, mask)
 
         return output
