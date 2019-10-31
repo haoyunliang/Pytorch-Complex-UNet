@@ -1,4 +1,3 @@
-'''Python
 class ComplexUnet(nn.Module):
 
     def __init__(self, in_channels, out_channels):
@@ -36,4 +35,3 @@ class ComplexUnet(nn.Module):
         output = self.dc(deconv5, x_k, mask)
 
         return output
-'''
